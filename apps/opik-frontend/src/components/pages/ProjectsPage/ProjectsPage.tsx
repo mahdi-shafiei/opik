@@ -49,6 +49,9 @@ import { RESOURCE_TYPE } from "@/components/shared/ResourceLink/ResourceLink";
 import FeedbackScoreListCell from "@/components/shared/DataTableCells/FeedbackScoreListCell";
 import { useIsFeatureEnabled } from "@/components/feature-toggles-provider";
 import { FeatureToggleKeys } from "@/types/feature-toggles";
+import { EXPLAINER_ID, EXPLAINERS_MAP } from "@/constants/explainers";
+import ExplainerDescription from "@/components/shared/ExplainerDescription/ExplainerDescription";
+import ErrorsCountCell from "@/components/shared/DataTableCells/ErrorsCountCell";
 
 export const getRowId = (p: ProjectWithStatistic) => p.id;
 
@@ -127,6 +130,33 @@ const ProjectsPage: React.FunctionComponent = () => {
         type: COLUMN_TYPE.number,
       },
       {
+        id: "error_count",
+        label: "Errors",
+        type: COLUMN_TYPE.errors,
+        cell: ErrorsCountCell as never,
+        customMeta: {
+          onZoomIn: (row: ProjectWithStatistic) => {
+            navigate({
+              to: "/$workspaceName/projects/$projectId/traces",
+              params: {
+                projectId: row.id,
+                workspaceName,
+              },
+              search: {
+                traces_filters: [
+                  {
+                    operator: "is_not_empty",
+                    type: COLUMN_TYPE.errors,
+                    field: "error_info",
+                    value: "",
+                  },
+                ],
+              },
+            });
+          },
+        },
+      },
+      {
         id: "usage.total_tokens",
         label: "Total tokens (average)",
         type: COLUMN_TYPE.number,
@@ -155,7 +185,7 @@ const ProjectsPage: React.FunctionComponent = () => {
       },
       {
         id: "feedback_scores",
-        label: "Feedback scores",
+        label: "Feedback scores (avg.)",
         type: COLUMN_TYPE.numberDictionary,
         accessorFn: (row) =>
           get(row, "feedback_scores", []).map((score) => ({
@@ -167,6 +197,7 @@ const ProjectsPage: React.FunctionComponent = () => {
           getHoverCardName: (row: ProjectWithStatistic) => row.name,
           isAverageScores: true,
         },
+        explainer: EXPLAINERS_MAP[EXPLAINER_ID.what_are_feedback_scores],
       },
       ...(isGuardrailsEnabled
         ? [
@@ -209,7 +240,7 @@ const ProjectsPage: React.FunctionComponent = () => {
         type: COLUMN_TYPE.string,
       },
     ];
-  }, [isGuardrailsEnabled]);
+  }, [isGuardrailsEnabled, navigate, workspaceName]);
 
   const resetDialogKeyRef = useRef(0);
   const [openDialog, setOpenDialog] = useState<boolean>(false);
@@ -356,9 +387,13 @@ const ProjectsPage: React.FunctionComponent = () => {
 
   return (
     <div className="pt-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-1 flex items-center justify-between">
         <h1 className="comet-title-l truncate break-words">Projects</h1>
       </div>
+      <ExplainerDescription
+        className="mb-4"
+        {...EXPLAINERS_MAP[EXPLAINER_ID.what_do_you_use_projects_for]}
+      />
       <div className="mb-4 flex items-center justify-between gap-8">
         <SearchInput
           searchText={search!}

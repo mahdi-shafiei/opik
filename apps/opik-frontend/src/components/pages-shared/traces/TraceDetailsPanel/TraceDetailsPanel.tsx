@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
 import find from "lodash/find";
-import { createEnumParam, useQueryParam } from "use-query-params";
-
+import isBoolean from "lodash/isBoolean";
+import isFunction from "lodash/isFunction";
 import { Trash } from "lucide-react";
 
 import { OnChangeFn } from "@/types/shared";
@@ -25,6 +25,10 @@ import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/shared/ConfirmDialog/ConfirmDialog";
 import CommentsViewer from "./CommentsViewer/CommentsViewer";
 import useLazySpansList from "@/api/traces/useLazySpansList";
+import {
+  DetailsActionSection,
+  useDetailsActionSectionState,
+} from "@/components/pages-shared/traces/DetailsActionSection";
 
 type TraceDetailsPanelProps = {
   projectId?: string;
@@ -39,17 +43,6 @@ type TraceDetailsPanelProps = {
   onRowChange?: (shift: number) => void;
 };
 
-export const LastSection = {
-  Annotations: "annotations",
-  Comments: "comments",
-} as const;
-export type LastSectionValue = (typeof LastSection)[keyof typeof LastSection];
-
-export const LastSectionParam = createEnumParam<LastSectionValue>([
-  "annotations",
-  "comments",
-]);
-
 const TraceDetailsPanel: React.FunctionComponent<TraceDetailsPanelProps> = ({
   projectId: externalProjectId,
   traceId,
@@ -63,13 +56,8 @@ const TraceDetailsPanel: React.FunctionComponent<TraceDetailsPanelProps> = ({
   onRowChange,
 }) => {
   const [popupOpen, setPopupOpen] = useState<boolean>(false);
-  const [lastSection, setLastSection] = useQueryParam(
-    "lastSection",
-    LastSectionParam,
-    {
-      updateType: "replaceIn",
-    },
-  );
+  const [activeSection, setActiveSection] =
+    useDetailsActionSectionState("lastSection");
 
   const { data: trace, isPending: isTracePending } = useTraceById(
     {
@@ -122,6 +110,20 @@ const TraceDetailsPanel: React.FunctionComponent<TraceDetailsPanelProps> = ({
       : trace;
   }, [spanId, spansData?.content, trace]);
 
+  const horizontalNavigation = useMemo(
+    () =>
+      isBoolean(hasNextRow) &&
+      isBoolean(hasPreviousRow) &&
+      isFunction(onRowChange)
+        ? {
+            onChange: onRowChange,
+            hasNext: hasNextRow,
+            hasPrevious: hasPreviousRow,
+          }
+        : undefined,
+    [hasNextRow, hasPreviousRow, onRowChange],
+  );
+
   const renderContent = () => {
     if (isTracePending || isSpansPending) {
       return <Loader />;
@@ -151,12 +153,12 @@ const TraceDetailsPanel: React.FunctionComponent<TraceDetailsPanelProps> = ({
               projectId={projectId}
               spanId={spanId}
               traceId={traceId}
-              lastSection={lastSection}
-              setLastSection={setLastSection}
+              activeSection={activeSection}
+              setActiveSection={setActiveSection}
               isSpansLazyLoading={isSpansLazyLoading}
             />
           </ResizablePanel>
-          {Boolean(lastSection) && (
+          {Boolean(activeSection) && (
             <>
               <ResizableHandle />
               <ResizablePanel
@@ -164,23 +166,23 @@ const TraceDetailsPanel: React.FunctionComponent<TraceDetailsPanelProps> = ({
                 defaultSize={40}
                 minSize={30}
               >
-                {lastSection === LastSection.Annotations && (
+                {activeSection === DetailsActionSection.Annotations && (
                   <TraceAnnotateViewer
                     data={dataToView}
                     spanId={spanId}
                     traceId={traceId}
-                    lastSection={lastSection}
-                    setLastSection={setLastSection}
+                    activeSection={activeSection}
+                    setActiveSection={setActiveSection}
                   />
                 )}
-                {lastSection === LastSection.Comments && (
+                {activeSection === DetailsActionSection.Comments && (
                   <CommentsViewer
                     data={dataToView}
                     spanId={spanId}
                     traceId={traceId}
                     projectId={projectId}
-                    lastSection={lastSection}
-                    setLastSection={setLastSection}
+                    activeSection={activeSection}
+                    setActiveSection={setActiveSection}
                   />
                 )}
               </ResizablePanel>
@@ -218,8 +220,9 @@ const TraceDetailsPanel: React.FunctionComponent<TraceDetailsPanelProps> = ({
           setOpen={setPopupOpen}
           onConfirm={handleTraceDelete}
           title="Delete trace"
-          description="Are you sure you want to delete this trace?"
+          description="Deleting a trace will also remove the trace data from related experiment samples. This action can’t be undone. Are you sure you want to continue?"
           confirmText="Delete trace"
+          confirmButtonVariant="destructive"
         />
         <Button variant="outline" size="sm" onClick={() => setPopupOpen(true)}>
           <Trash className="mr-2 size-4" />
@@ -236,10 +239,8 @@ const TraceDetailsPanel: React.FunctionComponent<TraceDetailsPanelProps> = ({
       open={open}
       navigationContent={renderNavigationContent()}
       headerContent={renderHeaderContent()}
-      hasPreviousRow={hasPreviousRow}
-      hasNextRow={hasNextRow}
       onClose={onClose}
-      onRowChange={onRowChange}
+      horizontalNavigation={horizontalNavigation}
     >
       {renderContent()}
     </ResizableSidePanel>

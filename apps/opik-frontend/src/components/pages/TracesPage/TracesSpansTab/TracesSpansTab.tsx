@@ -43,7 +43,7 @@ import {
 } from "@/lib/table";
 import { generateSelectColumDef } from "@/components/shared/DataTable/utils";
 import Loader from "@/components/shared/Loader/Loader";
-import CalloutAlert from "@/components/shared/CalloutAlert/CalloutAlert";
+import ExplainerCallout from "@/components/shared/ExplainerCallout/ExplainerCallout";
 import NoTracesPage from "@/components/pages/TracesPage/NoTracesPage";
 import SearchInput from "@/components/shared/SearchInput/SearchInput";
 import FiltersButton from "@/components/shared/FiltersButton/FiltersButton";
@@ -67,11 +67,7 @@ import CommentsCell from "@/components/shared/DataTableCells/CommentsCell";
 import FeedbackScoreHeader from "@/components/shared/DataTableHeaders/FeedbackScoreHeader";
 import TooltipWrapper from "@/components/shared/TooltipWrapper/TooltipWrapper";
 import ThreadDetailsPanel from "@/components/pages-shared/traces/ThreadDetailsPanel/ThreadDetailsPanel";
-import TraceDetailsPanel, {
-  LastSection,
-  LastSectionParam,
-  LastSectionValue,
-} from "@/components/pages-shared/traces/TraceDetailsPanel/TraceDetailsPanel";
+import TraceDetailsPanel from "@/components/pages-shared/traces/TraceDetailsPanel/TraceDetailsPanel";
 import PageBodyStickyContainer from "@/components/layout/PageBodyStickyContainer/PageBodyStickyContainer";
 import PageBodyStickyTableWrapper from "@/components/layout/PageBodyStickyTableWrapper/PageBodyStickyTableWrapper";
 import TracesOrSpansPathsAutocomplete from "@/components/pages-shared/traces/TracesOrSpansPathsAutocomplete/TracesOrSpansPathsAutocomplete";
@@ -84,6 +80,11 @@ import { FeatureToggleKeys } from "@/types/feature-toggles";
 import GuardrailsCell from "@/components/shared/DataTableCells/GuardrailsCell";
 import useQueryParamAndLocalStorageState from "@/hooks/useQueryParamAndLocalStorageState";
 import { EXPLAINER_ID, EXPLAINERS_MAP } from "@/constants/explainers";
+import {
+  DetailsActionSection,
+  DetailsActionSectionParam,
+  DetailsActionSectionValue,
+} from "@/components/pages-shared/traces/DetailsActionSection";
 
 const getRowId = (d: Trace | Span) => d.id;
 
@@ -183,6 +184,7 @@ const SHARED_COLUMNS: ColumnData<BaseTraceData>[] = [
     type: COLUMN_TYPE.cost,
     cell: CostCell as never,
     explainer: EXPLAINERS_MAP[EXPLAINER_ID.hows_the_cost_estimated],
+    size: 160,
   },
 ];
 
@@ -249,9 +251,13 @@ export const TracesSpansTab: React.FC<TracesSpansTabProps> = ({
     syncQueryWithLocalStorageOnInit: true,
   });
 
-  const [, setLastSection] = useQueryParam("lastSection", LastSectionParam, {
-    updateType: "replaceIn",
-  });
+  const [, setLastSection] = useQueryParam(
+    "lastSection",
+    DetailsActionSectionParam,
+    {
+      updateType: "replaceIn",
+    },
+  );
 
   const [height, setHeight] = useQueryParamAndLocalStorageState<
     string | null | undefined
@@ -443,7 +449,7 @@ export const TracesSpansTab: React.FC<TracesSpansTabProps> = ({
   }, [rowSelection, rows]);
 
   const handleRowClick = useCallback(
-    (row?: Trace | Span, lastSection?: LastSectionValue) => {
+    (row?: Trace | Span, lastSection?: DetailsActionSectionValue) => {
       if (!row) return;
       if (type === TRACE_DATA_TYPE.traces) {
         setTraceId((state) => (row.id === state ? "" : row.id));
@@ -463,7 +469,7 @@ export const TracesSpansTab: React.FC<TracesSpansTabProps> = ({
   const meta = useMemo(
     () => ({
       onCommentsReply: (row?: Trace | Span) => {
-        handleRowClick(row, LastSection.Comments);
+        handleRowClick(row, DetailsActionSection.Comments);
       },
     }),
     [handleRowClick],
@@ -490,6 +496,13 @@ export const TracesSpansTab: React.FC<TracesSpansTabProps> = ({
               accessorFn: (row: BaseTraceData) => get(row, "span_count", "-"),
             },
             {
+              id: "llm_span_count",
+              label: "LLM calls count",
+              type: COLUMN_TYPE.number,
+              accessorFn: (row: BaseTraceData) =>
+                get(row, "llm_span_count", "-"),
+            },
+            {
               id: "thread_id",
               label: "Thread ID",
               type: COLUMN_TYPE.string,
@@ -504,8 +517,9 @@ export const TracesSpansTab: React.FC<TracesSpansTabProps> = ({
         : []),
       {
         id: "error_info",
-        label: "Error",
-        type: COLUMN_TYPE.string,
+        label: "Errors",
+        statisticKey: "error_count",
+        type: COLUMN_TYPE.errors,
         cell: ErrorCell as never,
       },
       {
@@ -553,6 +567,11 @@ export const TracesSpansTab: React.FC<TracesSpansTabProps> = ({
             },
           ]
         : []),
+      {
+        id: "error_info",
+        label: "Errors",
+        type: COLUMN_TYPE.errors,
+      },
       {
         id: COLUMN_FEEDBACK_SCORES_ID,
         label: "Feedback scores",
@@ -675,12 +694,9 @@ export const TracesSpansTab: React.FC<TracesSpansTabProps> = ({
 
   return (
     <>
-      <PageBodyStickyContainer
-        className="pb-4"
-        direction="horizontal"
-        limitWidth
-      >
-        <CalloutAlert
+      <PageBodyStickyContainer direction="horizontal" limitWidth>
+        <ExplainerCallout
+          className="mb-4"
           {...(type === TRACE_DATA_TYPE.traces
             ? EXPLAINERS_MAP[EXPLAINER_ID.what_are_traces]
             : EXPLAINERS_MAP[EXPLAINER_ID.what_are_llm_calls])}
@@ -794,6 +810,7 @@ export const TracesSpansTab: React.FC<TracesSpansTabProps> = ({
       />
       <ThreadDetailsPanel
         projectId={projectId}
+        projectName={projectName}
         traceId={traceId!}
         setTraceId={setTraceId}
         threadId={threadId!}
