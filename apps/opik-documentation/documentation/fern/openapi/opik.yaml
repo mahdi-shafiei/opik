@@ -36,6 +36,8 @@ servers:
 tags:
 - name: System usage
   description: System usage related resource
+- name: Alerts
+  description: Alert resources
 - name: Annotation Queues
   description: Private annotation queue operations
 - name: Attachments
@@ -159,6 +161,73 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TraceCountResponse"
+  /v1/private/alerts:
+    post:
+      tags:
+      - Alerts
+      summary: Create alert
+      description: Create alert
+      operationId: createAlert
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Alert_Write"
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              required: true
+              style: simple
+              schema:
+                type: string
+              example: "${basePath}/v1/private/alerts/{alertId}"
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /v1/private/alerts/{id}:
+    get:
+      tags:
+      - Alerts
+      summary: Get Alert by id
+      description: Get Alert by id
+      operationId: getAlertById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: Alert resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alert_Public"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage_Public"
   /v1/private/annotation-queues/{id}/items/add:
     post:
       tags:
@@ -1601,6 +1670,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorMessage_Public"
+    patch:
+      tags:
+      - Experiments
+      summary: Update experiment by id
+      description: Update experiment by id
+      operationId: updateExperiment
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperimentUpdate"
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
   /v1/private/experiments/items/{id}:
     get:
       tags:
@@ -4132,6 +4234,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorMessage"
+      deprecated: true
   /v1/private/workspaces/metrics/summaries:
     post:
       tags:
@@ -4157,6 +4260,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorMessage"
+      deprecated: true
   /v1/session/redirect/datasets:
     get:
       tags:
@@ -4387,6 +4491,376 @@ components:
           type: integer
           format: int32
     ErrorMessage:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+        details:
+          type: string
+    Alert:
+      required:
+      - name
+      - webhook
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          maxLength: 255
+          minLength: 0
+          type: string
+        enabled:
+          type: boolean
+        webhook:
+          $ref: "#/components/schemas/Webhook"
+        triggers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertTrigger"
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        last_updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_updated_by:
+          type: string
+          readOnly: true
+    AlertTrigger:
+      required:
+      - event_type
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        alert_id:
+          type: string
+          format: uuid
+          readOnly: true
+        event_type:
+          type: string
+          enum:
+          - trace:errors
+          - trace:feedback_score
+          - trace_thread:feedback_score
+          - prompt:created
+          - prompt:committed
+          - span:guardrails_triggered
+          - prompt:deleted
+        trigger_configs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertTriggerConfig"
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+    AlertTriggerConfig:
+      required:
+      - type
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        alert_trigger_id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          type: string
+          enum:
+          - scope:project
+          - threshold:feedback_score
+        config_value:
+          type: object
+          additionalProperties:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        last_updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_updated_by:
+          type: string
+          readOnly: true
+    Webhook:
+      required:
+      - secret_token
+      - url
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          minLength: 1
+          type: string
+        secret_token:
+          maxLength: 250
+          minLength: 0
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        last_updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_updated_by:
+          type: string
+          readOnly: true
+    AlertTriggerConfig_Write:
+      required:
+      - type
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+          - scope:project
+          - threshold:feedback_score
+        config_value:
+          type: object
+          additionalProperties:
+            type: string
+    AlertTrigger_Write:
+      required:
+      - event_type
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          enum:
+          - trace:errors
+          - trace:feedback_score
+          - trace_thread:feedback_score
+          - prompt:created
+          - prompt:committed
+          - span:guardrails_triggered
+          - prompt:deleted
+        trigger_configs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertTriggerConfig_Write"
+    Alert_Write:
+      required:
+      - name
+      - webhook
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          maxLength: 255
+          minLength: 0
+          type: string
+        enabled:
+          type: boolean
+        webhook:
+          $ref: "#/components/schemas/Webhook_Write"
+        triggers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertTrigger_Write"
+    Webhook_Write:
+      required:
+      - secret_token
+      - url
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          minLength: 1
+          type: string
+        secret_token:
+          maxLength: 250
+          minLength: 0
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+    AlertTriggerConfig_Public:
+      required:
+      - type
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        alert_trigger_id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          type: string
+          enum:
+          - scope:project
+          - threshold:feedback_score
+        config_value:
+          type: object
+          additionalProperties:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        last_updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_updated_by:
+          type: string
+          readOnly: true
+    AlertTrigger_Public:
+      required:
+      - event_type
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        alert_id:
+          type: string
+          format: uuid
+          readOnly: true
+        event_type:
+          type: string
+          enum:
+          - trace:errors
+          - trace:feedback_score
+          - trace_thread:feedback_score
+          - prompt:created
+          - prompt:committed
+          - span:guardrails_triggered
+          - prompt:deleted
+        trigger_configs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertTriggerConfig_Public"
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+    Alert_Public:
+      required:
+      - name
+      - webhook
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          maxLength: 255
+          minLength: 0
+          type: string
+        enabled:
+          type: boolean
+        webhook:
+          $ref: "#/components/schemas/Webhook_Public"
+        triggers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertTrigger_Public"
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        last_updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_updated_by:
+          type: string
+          readOnly: true
+    Webhook_Public:
+      required:
+      - secret_token
+      - url
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          minLength: 1
+          type: string
+        secret_token:
+          maxLength: 250
+          minLength: 0
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        last_updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        last_updated_by:
+          type: string
+          readOnly: true
+    ErrorMessage_Public:
       type: object
       properties:
         code:
@@ -4668,16 +5142,6 @@ components:
         value:
           type: number
       readOnly: true
-    ErrorMessage_Public:
-      type: object
-      properties:
-        code:
-          type: integer
-          format: int32
-        message:
-          type: string
-        details:
-          type: string
     AnnotationQueueUpdate:
       type: object
       properties:
@@ -7063,6 +7527,12 @@ components:
         last_updated_by:
           type: string
           readOnly: true
+        status:
+          type: string
+          enum:
+          - running
+          - completed
+          - cancelled
         prompt_version:
           $ref: "#/components/schemas/PromptVersionLink"
         prompt_versions:
@@ -7117,6 +7587,12 @@ components:
         optimization_id:
           type: string
           format: uuid
+        status:
+          type: string
+          enum:
+          - running
+          - completed
+          - cancelled
         prompt_version:
           $ref: "#/components/schemas/PromptVersionLink_Write"
         prompt_versions:
@@ -7807,6 +8283,12 @@ components:
         last_updated_by:
           type: string
           readOnly: true
+        status:
+          type: string
+          enum:
+          - running
+          - completed
+          - cancelled
         prompt_version:
           $ref: "#/components/schemas/PromptVersionLink_Public"
         prompt_versions:
@@ -7934,6 +8416,29 @@ components:
         last_retrieved_id:
           type: string
           format: uuid
+    ExperimentUpdate:
+      type: object
+      properties:
+        name:
+          pattern: (?s)^\s*(\S.*\S|\S)\s*$
+          type: string
+        metadata:
+          $ref: "#/components/schemas/JsonNode"
+        type:
+          type: string
+          enum:
+          - regular
+          - trial
+          - mini-batch
+        status:
+          type: string
+          description: The status of the experiment
+          enum:
+          - running
+          - completed
+          - cancelled
+    JsonNode:
+      type: object
     CategoricalFeedbackDefinition:
       required:
       - details
@@ -8418,8 +8923,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Guardrail"
-    JsonNode:
-      type: object
     GuardrailBatch_Write:
       required:
       - guardrails
