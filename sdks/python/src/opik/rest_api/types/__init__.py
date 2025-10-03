@@ -4,6 +4,7 @@
 
 from .aggregation_data import AggregationData
 from .alert import Alert
+from .alert_page_public import AlertPagePublic
 from .alert_public import AlertPublic
 from .alert_trigger import AlertTrigger
 from .alert_trigger_config import AlertTriggerConfig
@@ -406,6 +407,7 @@ from .workspace_trace_count import WorkspaceTraceCount
 __all__ = [
     "AggregationData",
     "Alert",
+    "AlertPagePublic",
     "AlertPublic",
     "AlertTrigger",
     "AlertTriggerConfig",

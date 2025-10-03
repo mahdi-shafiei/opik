@@ -162,6 +162,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/TraceCountResponse"
   /v1/private/alerts:
+    get:
+      tags:
+      - Alerts
+      summary: Find alerts
+      description: Find alerts
+      operationId: findAlerts
+      parameters:
+      - name: page
+        in: query
+        schema:
+          minimum: 1
+          type: integer
+          format: int32
+          default: 1
+      - name: size
+        in: query
+        schema:
+          minimum: 1
+          type: integer
+          format: int32
+          default: 10
+      - name: sorting
+        in: query
+        schema:
+          type: string
+      - name: filters
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertPage_Public"
     post:
       tags:
       - Alerts
@@ -4794,6 +4830,26 @@ components:
           items:
             type: string
             format: uuid
+    AlertPage_Public:
+      type: object
+      properties:
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int64
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/Alert_Public"
+        sortable_by:
+          type: array
+          items:
+            type: string
     AlertTriggerConfig_Public:
       required:
       - type

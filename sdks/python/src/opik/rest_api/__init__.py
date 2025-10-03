@@ -5,6 +5,7 @@
 from .types import (
     AggregationData,
     Alert,
+    AlertPagePublic,
     AlertPublic,
     AlertTrigger,
     AlertTriggerConfig,
@@ -441,6 +442,7 @@ from .spans import (
 __all__ = [
     "AggregationData",
     "Alert",
+    "AlertPagePublic",
     "AlertPublic",
     "AlertTrigger",
     "AlertTriggerConfig",
