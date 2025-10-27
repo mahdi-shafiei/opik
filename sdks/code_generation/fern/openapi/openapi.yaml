@@ -8879,11 +8879,27 @@ components:
           type: object
           additionalProperties:
             $ref: "#/components/schemas/GroupContent"
+        details:
+          $ref: "#/components/schemas/GroupDetails"
     GroupContent:
       type: object
       properties:
         label:
           type: string
+    GroupDetail:
+      type: object
+      properties:
+        group_sorting:
+          type: array
+          items:
+            type: string
+    GroupDetails:
+      type: object
+      properties:
+        groups_details:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupDetail"
     AggregationData:
       type: object
       properties:
